@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <link href="/public/testFiwareCommon.css" rel="stylesheet" />
+  <link href="/public/bootstrap-5.3.0-dist/css/bootstrap.min.css" rel="stylesheet">
+  <script src="/public/bootstrap-5.3.0-dist/js/bootstrap.bundle.min.js"></script>
+  <script src="/public/sweetalert2/dist/sweetalert2.all.min.js"></script>
+  <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.15.3/css/all.css"/>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+  <title>プッシュ通知の作成</title>
+  <style>
+    #map {
+      height: 600px;
+      width: 90%;
+      max-width: 100%;
+      margin: 0 auto;
+    }
+
+    @media (max-width: 768px) {
+      #map {
+        height: 400px;
+        width: 100%;
+      }
+    }
+
+    @media (max-width: 576px) {
+      #map {
+        height: 300px;
+        width: 100%;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div id="map"></div>
+  <div class="row mt-5"></div>
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  <script>
+    L.Icon.Default.imagePath = 'https://unpkg.com/leaflet@1.7.1/dist/images/';
+
+    document.addEventListener("DOMContentLoaded", async function() {
+      var map = L.map('map').setView([36.341811, 140.446794], 10); // 茨城県の中心の緯度経度
+
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+      }).addTo(map);
+
+      try {
+        console.log('Fetching data from server');
+        const response = await fetch('/api/getOrionData');
+        if (!response.ok) {
+          throw new Error('Network response was not ok');
+        }
+        const data = await response.json();
+        console.log('Data fetched from server:', data);
+
+        data.forEach(item => {
+          if (item.latitude && item.latitude.value && item.longitude && item.longitude.value) {
+            var lat = parseFloat(item.latitude.value);
+            var lon = parseFloat(item.longitude.value);
+            if (!isNaN(lat) && !isNaN(lon)) {
+              console.log(`Adding marker at: [${lat}, ${lon}]`);
+              var marker = L.marker([lat, lon]).addTo(map);
+              marker.bindPopup(`
+                <b>名前:</b> ${item.name ? item.name.value : '不明'}<br>
+                <b>住所:</b> ${item.fullAddress ? item.fullAddress.value : '不明'}<br>
+                <b>市町村コード:</b> ${item.localGovernmentCode ? item.localGovernmentCode.value : '不明'}
+              `);
+            } else {
+              console.warn('Invalid latitude/longitude values:', { lat, lon });
+            }
+          } else {
+            console.warn('Missing latitude/longitude for item:', item);
+          }
+        });
+      } catch (error) {
+        console.error('Error fetching data from server:', error);
+      }
+    });
+  </script>
+</body>
+</html>
